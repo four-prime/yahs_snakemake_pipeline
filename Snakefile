@@ -1,4 +1,3 @@
-import os
 import glob
 
 configfile: "config.json"
@@ -12,24 +11,29 @@ def get_sample_input_paths():
     
     for sample in sample_names:
         for ext in ["fa", "fasta"]:
-            fasta_path_list = glob.glob(f"{sample}/input/*.{ext}")
+            fasta_path_list = glob.glob(f"samples/{sample}/input/*.{ext}")
             if fasta_path_list:
                 sample_fa_paths[sample] = fasta_path_list
                 break
         
-        bam_path = glob.glob(f"{sample}/input/*.bam")
+        bam_path = glob.glob(f"samples/{sample}/input/*.bam")
         sample_bam_paths[sample] = bam_path
 
-        match sample_fa_paths[sample], sample_bam_paths[sample]:
-            case None, None:
-                raise FileNotFoundError(f"No .fa, .fasta or .bam file found for sample {sample}")
-            case None, _:
-                raise FileNotFoundError(f"No .fa or .fasta file found for sample {sample}")
-            case _, None:
-                raise FileNotFoundError(f"No .bam file found for sample {sample}")
+        print(sample_fa_paths)
+
+        if sample not in sample_fa_paths and sample not in sample_bam_paths:
+            raise FileNotFoundError(f"No .fa, .fasta or .bam file found for sample {sample}")
+        elif sample not in sample_fa_paths:
+            raise FileNotFoundError(f"No .fa or .fasta file found for sample {sample}")
+        elif sample not in sample_bam_paths:
+            raise FileNotFoundError(f"No .bam file found for sample {sample}")
+
 
         if len(sample_fa_paths[sample]) > 1:
-            raise ValueError(f"Multiple FASTA files found for sample {sample}: {sample_fa_paths[sample]}")
+            raise ValueError(f"""
+                            Multiple FASTA files found for sample {sample}: {sample_fa_paths[sample]}
+                            Please either remove any accidentaly included files or concatenate your input fastas.
+                             """)
     
     return sample_fa_paths, sample_bam_paths
 
@@ -50,7 +54,7 @@ def get_bam_path(wildcards):
 
 rule all:
     input:
-        [f"{sample_name}/output/out_JBAT.hic" for sample_name in sample_names]
+        [f"samples/{sample_name}/output/out_JBAT.hic" for sample_name in sample_names]
 
 
 rule samtools_faidx_source:
@@ -62,9 +66,9 @@ rule samtools_faidx_source:
     input:
         fa=get_fasta_path
     output:
-        fai="{sample_name}/input/filename.{ext}.fai"
+        fai="samples/{sample_name}/input/filename.{ext}.fai"
     log:
-        "{sample_name}/logs/samtools_index_{ext}.log"
+        "samples/{sample_name}/logs/samtools_index_{ext}.log"
     wildcard_constraints:
         ext="(fa|fasta)"
     shell:
@@ -80,9 +84,9 @@ rule sambamba_deduplicate:
     input:
         bam=get_bam_path,
     output:
-        bam="{sample_name}/work/sambamba_deduplicate/out.bam",
+        bam="samples/{sample_name}/work/sambamba_deduplicate/out.bam",
     log:
-        "{sample_name}/logs/sambamba_deduplicate.log"
+        "samples/{sample_name}/logs/sambamba_deduplicate.log"
     shell:
         "sambamba markdup -t {threads} --show-progress {input.bam} {output.bam}"
 
@@ -94,15 +98,15 @@ rule yahs:
     resources:
         mem_mb=200000
     input:
-        bam="{sample_name}/work/sambamba_deduplicate/out.bam",
+        bam="samples/{sample_name}/work/sambamba_deduplicate/out.bam",
         fasta=get_fasta_path,
         fai=get_fasta_index_path,
     output:
-        agp="{sample_name}/work/yahs/out_scaffolds_final.agp",
-        fa="{sample_name}/work/yahs/out_scaffolds_final.fa",
-        bin="{sample_name}/work/yahs/out.bin",
+        agp="samples/{sample_name}/work/yahs/out_scaffolds_final.agp",
+        fa="samples/{sample_name}/work/yahs/out_scaffolds_final.fa",
+        bin="samples/{sample_name}/work/yahs/out.bin",
     log:
-        "{sample_name}/logs/yahs.log"
+        "samples/{sample_name}/logs/yahs.log"
     shell:
         "yahs -o {wildcards.sample_name}/work/yahs/out {input.fasta} {input.bam} 2> {log}"
 
@@ -114,15 +118,15 @@ rule juicer_generate_JBAT:
     resources:
         mem_mb=32000
     input:
-        agp="{sample_name}/work/yahs/out_scaffolds_final.agp",
-        bam="{sample_name}/work/sambamba_deduplicate/out.bam",
+        agp="samples/{sample_name}/work/yahs/out_scaffolds_final.agp",
+        bam="samples/{sample_name}/work/sambamba_deduplicate/out.bam",
         fai=get_fasta_index_path,
     output:
-        txt="{sample_name}/work/out_JBAT.txt",
-        assembly="{sample_name}/work/out_JBAT.assembly",
-        jbat_log="{sample_name}/work/out_JBAT.log"
+        txt="samples/{sample_name}/work/out_JBAT.txt",
+        assembly="samples/{sample_name}/work/out_JBAT.assembly",
+        jbat_log="samples/{sample_name}/work/out_JBAT.log"
     log:
-        "{sample_name}/logs/juicer_generate_JBAT.log"
+        "samples/{sample_name}/logs/juicer_generate_JBAT.log"
     shell:
         "juicer pre -a -o {wildcards.sample_name}/work/out_JBAT {input.bam} {input.agp} {input.fai} > {log} 2> {output.jbat_log}"
 
@@ -144,11 +148,11 @@ rule juicer_tools_generate_hic:
         mem_mb=33000
     input:
         juicer_tools="utils/juicer_tools.1.9.9_jcuda.0.8.jar",
-        txt="{sample_name}/work/out_JBAT.txt",
-        jbat_log="{sample_name}/work/out_JBAT.log"
+        txt="samples/{sample_name}/work/out_JBAT.txt",
+        jbat_log="samples/{sample_name}/work/out_JBAT.log"
     output:
-        hic="{sample_name}/output/out_JBAT.hic"
+        hic="samples/{sample_name}/output/out_JBAT.hic"
     log:
-        "{sample_name}/logs/juicer_tools_generate_hic.log"
+        "samples/{sample_name}/logs/juicer_tools_generate_hic.log"
     shell:
         "(java -jar -Xmx{resources.mem_mb}m {input.juicer_tools} pre {input.txt} {output.hic} <(cat {input.jbat_log} | grep PRE_C_SIZE | awk '{{print $2\" \"$3}}')) 2> {log}"
