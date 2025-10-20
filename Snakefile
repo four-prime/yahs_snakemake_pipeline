@@ -1,40 +1,52 @@
 import os
+import glob
 
 configfile: "config.json"
 
 sample_names = config["sample_names"]
 
 
-def get_sample_extensions():
-    sample_exts = {}
+def get_sample_input_paths():
+    sample_fa_paths = {}
+    sample_bam_paths = {}
     
     for sample in sample_names:
         for ext in ["fa", "fasta"]:
-            fasta_path = f"{sample}/input/filename.{ext}"
-            if os.path.exists(fasta_path):
-                sample_exts[sample] = ext
+            fasta_path_list = glob.glob(f"{sample}/input/*.{ext}")
+            if fasta_path_list:
+                sample_fa_paths[sample] = fasta_path_list
                 break
         
-        if sample not in sample_exts:
-            raise FileNotFoundError(
-                f"No .fa or .fasta file found for sample {sample}"
-            )
+        bam_path = glob.glob(f"{sample}/input/*.bam")
+        sample_bam_paths[sample] = bam_path
+
+        match sample_fa_paths[sample], sample_bam_paths[sample]:
+            case None, None:
+                raise FileNotFoundError(f"No .fa, .fasta or .bam file found for sample {sample}")
+            case None, _:
+                raise FileNotFoundError(f"No .fa or .fasta file found for sample {sample}")
+            case _, None:
+                raise FileNotFoundError(f"No .bam file found for sample {sample}")
+
+        if len(sample_fa_paths[sample]) > 1:
+            raise ValueError(f"Multiple FASTA files found for sample {sample}: {sample_fa_paths[sample]}")
     
-    return sample_exts
+    return sample_fa_paths, sample_bam_paths
 
 
-SAMPLE_EXTS = get_sample_extensions()
+SAMPLE_FA_PATHS, SAMPLE_BAM_PATHS = get_sample_input_paths()
 
 
 def get_fasta_path(wildcards):
-    """Get the full FASTA file path for a given sample."""
-    return f"{wildcards.sample_name}/input/filename.{SAMPLE_EXTS[wildcards.sample_name]}"
+    return SAMPLE_FA_PATHS[wildcards.sample_name][0]
 
 
 def get_fasta_index_path(wildcards):
-    """Get the full FASTA index (.fai) file path for a given sample."""
-    return f"{wildcards.sample_name}/input/filename.{SAMPLE_EXTS[wildcards.sample_name]}.fai"
+    return f"{SAMPLE_FA_PATHS[wildcards.sample_name][0]}.fai"
 
+
+def get_bam_path(wildcards):
+    return SAMPLE_BAM_PATHS[wildcards.sample_name][0]
 
 rule all:
     input:
@@ -66,9 +78,9 @@ rule sambamba_deduplicate:
     resources:
         mem_mb=60000
     input:
-        bam="{sample_name}/input/filename.bam",
+        bam=get_bam_path,
     output:
-        bam="{sample_name}/work/sambamba_deduplicate/filename.bam",
+        bam="{sample_name}/work/sambamba_deduplicate/out.bam",
     log:
         "{sample_name}/logs/sambamba_deduplicate.log"
     shell:
@@ -82,7 +94,7 @@ rule yahs:
     resources:
         mem_mb=200000
     input:
-        bam="{sample_name}/work/sambamba_deduplicate/filename.bam",
+        bam="{sample_name}/work/sambamba_deduplicate/out.bam",
         fasta=get_fasta_path,
         fai=get_fasta_index_path,
     output:
@@ -103,7 +115,7 @@ rule juicer_generate_JBAT:
         mem_mb=32000
     input:
         agp="{sample_name}/work/yahs/out_scaffolds_final.agp",
-        bam="{sample_name}/work/sambamba_deduplicate/filename.bam",
+        bam="{sample_name}/work/sambamba_deduplicate/out.bam",
         fai=get_fasta_index_path,
     output:
         txt="{sample_name}/work/out_JBAT.txt",
