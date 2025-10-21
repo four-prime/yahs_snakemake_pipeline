@@ -22,7 +22,8 @@ The pipeline expects the following file structure. The `samples` directory shoul
 
 ---
 
-Before running the pipeline, update the `sample_names` field in `config.json` to include the samples you wish to process.  
+Before running the pipeline, update the `sample_names` field in `config.json` to include the samples you wish to process.
+
 For the example structure above, this would look like:
 
 ```json
@@ -41,6 +42,7 @@ To use Snakemake's SLURM job scheduling and containerization features, you need 
 `~/.config/snakemake/`
 
 A template configuration file can be created using the following command (adjust paths and options as needed):
+
 **Note:** If the samples to be used as input are not simlinks, then it is safe to set the appatainer-args volume binding field to the same directory as the pipeline Snakefile. However if you wish to use simlinks as inputs, then the binding must point to a directory somewhere *above* your simlinks in the file tree.
 
 ```bash
