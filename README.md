@@ -43,6 +43,7 @@ To use Snakemake's SLURM job scheduling and containerization features, you need 
 A template configuration file can be created using the following command (adjust paths and options as needed):
 
 ```bash
+mkdir -p ~/.config/snakemake/slurm-apptainer && 
 echo "executor: slurm
 jobs: 100
 cores: 32
