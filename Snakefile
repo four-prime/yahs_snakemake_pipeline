@@ -107,6 +107,15 @@ rule yahs:
     shell:
         "yahs -o {wildcards.sample_name}/work/yahs/out {input.fasta} {input.bam} 2> {log}"
 
+rule output_scaffolds:
+    input:
+        fa="samples/{sample_name}/work/yahs/out_scaffolds_final.fa",
+    output:
+        fa="samples/{sample_name}/output/out_scaffolds_final.fa",
+    log:
+        "samples/{sample_name}/logs/output_scaffolds.log"
+    shell:
+        "mv {input.fa} {output.fa} 2> {log}"
 
 rule juicer_generate_JBAT:
     container:
