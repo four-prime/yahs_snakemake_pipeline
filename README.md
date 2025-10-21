@@ -41,6 +41,7 @@ To use Snakemake's SLURM job scheduling and containerization features, you need 
 `~/.config/snakemake/`
 
 A template configuration file can be created using the following command (adjust paths and options as needed):
+**Note:** If the samples to be used as input are not simlinks, then it is safe to set the appatainer-args volume binding field to the same directory as the pipeline Snakefile. However if you wish to use simlinks as inputs, then the binding must point to a directory somewhere *above* your simlinks in the file tree.
 
 ```bash
 mkdir -p ~/.config/snakemake/slurm-apptainer && 
@@ -49,7 +50,7 @@ jobs: 100
 cores: 32
 latency-wait: 30
 software-deployment-method: apptainer
-apptainer-args: \"--bind /your/directory/of/intrest\"
+apptainer-args: \"--bind /your/directory/of/interest\"
 default-resources:
   slurm_account: unix-slurm
   slurm_extra: \"'--auks=yes'\"
