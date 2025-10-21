@@ -4,6 +4,7 @@ The pipeline expects the following file structure. The `samples` directory shoul
 
 **Note:** Gzipped files are not supported at this time.
 
+```bash
 ├── config.json
 ├── README.md
 ├── samples
@@ -17,6 +18,7 @@ The pipeline expects the following file structure. The `samples` directory shoul
 │           └── some_other_file_b.fasta
 ├── downloads
 └── Snakefile
+```
 
 ---
 
@@ -74,6 +76,7 @@ snakemake --profile slurm-apptainer
 
 Once complete, your project file tree should look like so:
 
+```bash
 ├── config.json
 ├── README.md
 ├── samples
@@ -91,5 +94,6 @@ Once complete, your project file tree should look like so:
 │       └── output
 ├── downloads
 └── Snakefile
+```
 
 Within the output folder should be two files. A .fa file containing the final scaffold output of yahs, and a .hic file which can be passed to [Juicebox](https://github.com/aidenlab/Juicebox/wiki/Download) to visulaise Hi-C contact matrices for the assembly and perform manual corrections. Details on how to perform manual corrections will be provided at a future date.
