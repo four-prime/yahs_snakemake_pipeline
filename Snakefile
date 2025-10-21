@@ -19,15 +19,12 @@ def get_sample_input_paths():
         bam_path = glob.glob(f"samples/{sample}/input/*.bam")
         sample_bam_paths[sample] = bam_path
 
-        print(sample_fa_paths)
-
         if sample not in sample_fa_paths and sample not in sample_bam_paths:
             raise FileNotFoundError(f"No .fa, .fasta or .bam file found for sample {sample}")
         elif sample not in sample_fa_paths:
             raise FileNotFoundError(f"No .fa or .fasta file found for sample {sample}")
         elif sample not in sample_bam_paths:
             raise FileNotFoundError(f"No .bam file found for sample {sample}")
-
 
         if len(sample_fa_paths[sample]) > 1:
             raise ValueError(f"""
