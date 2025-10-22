@@ -153,7 +153,7 @@ rule juicer_tools_generate_hic:
     resources:
         mem_mb=33000
     input:
-        juicer_tools="utils/juicer_tools.1.9.9_jcuda.0.8.jar",
+        juicer_tools="downloads/juicer_tools.1.9.9_jcuda.0.8.jar",
         txt="samples/{sample_name}/work/out_JBAT.txt",
         jbat_log="samples/{sample_name}/work/out_JBAT.log"
     output:
