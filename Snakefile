@@ -139,9 +139,9 @@ rule juicer_generate_JBAT:
 
 rule download_juicer_tools:
     output:
-        juicer_tools="utils/juicer_tools.1.9.9_jcuda.0.8.jar",
+        juicer_tools="downloads/juicer_tools.1.9.9_jcuda.0.8.jar",
     log:
-        "utils/logs/get_juicer_tools.log"
+        "downloads/logs/get_juicer_tools.log"
     shell:
         "wget https://s3.amazonaws.com/hicfiles.tc4ga.com/public/juicer/juicer_tools.1.9.9_jcuda.0.8.jar -O {output.juicer_tools} 2> {log}"
 
