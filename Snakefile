@@ -85,7 +85,7 @@ rule sambamba_deduplicate:
     log:
         "samples/{sample_name}/logs/sambamba_deduplicate.log"
     shell:
-        "sambamba markdup -t {threads} --show-progress {input.bam} {output.bam}"
+        "sambamba markdup -t {threads} --show-progress {input.bam} {output.bam} 2> {log}"
 
 
 rule yahs:
@@ -105,7 +105,7 @@ rule yahs:
     log:
         "samples/{sample_name}/logs/yahs.log"
     shell:
-        "yahs -o {wildcards.sample_name}/work/yahs/out {input.fasta} {input.bam} 2> {log}"
+        "yahs -o samples/{wildcards.sample_name}/work/yahs/out {input.fasta} {input.bam} 2> {log}"
 
 rule output_scaffolds:
     input:
@@ -134,7 +134,7 @@ rule juicer_generate_JBAT:
     log:
         "samples/{sample_name}/logs/juicer_generate_JBAT.log"
     shell:
-        "juicer pre -a -o {wildcards.sample_name}/work/out_JBAT {input.bam} {input.agp} {input.fai} > {log} 2> {output.jbat_log}"
+        "juicer pre -a -o samples/{wildcards.sample_name}/work/out_JBAT {input.bam} {input.agp} {input.fai} > {log} 2> {output.jbat_log}"
 
 
 rule download_juicer_tools:
