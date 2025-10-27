@@ -63,11 +63,9 @@ rule samtools_faidx_source:
     input:
         fa=get_fasta_path
     output:
-        fai="samples/{sample_name}/input/filename.{ext}.fai"
+        fai="samples/{sample_name}/input/{filename}.fai"
     log:
-        "samples/{sample_name}/logs/samtools_index_{ext}.log"
-    wildcard_constraints:
-        ext="(fa|fasta)"
+        "samples/{sample_name}/logs/samtools_index_{filename}.log"
     shell:
         "samtools faidx {input.fa} -o {output.fai} 2> {log}"
 
