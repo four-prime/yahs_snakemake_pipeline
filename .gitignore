@@ -1,6 +1,7 @@
 .snakemake
-samples/*/input
-samples/*/work
-samples/*/output
-samples/*/logs
-/downloads
+.nextflow*
+work*
+output
+logs*
+log*
+downloads

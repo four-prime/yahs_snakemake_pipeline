@@ -14,20 +14,20 @@ def get_sample_input_paths():
 
         valid_extensions = ('.fa', '.fasta', '.fq', '.fastq', '.fa.gz', '.fasta.gz', '.fq.gz', '.fastq.gz')
 
-        hifi_path_list = glob.glob(f"samples/{sample}/input/hifi/*")
+        hifi_path_list = glob.glob(f"samples/{sample}/hifi/*")
         hifi_path_list = [f for f in hifi_path_list if f.endswith(valid_extensions)]
 
-        hic_r1_list = glob.glob(f"samples/{sample}/input/hic/r1/*")
+        hic_r1_list = glob.glob(f"samples/{sample}/hic/r1/*")
         hic_r1_list  = [f for f in hic_r1_list  if f.endswith(valid_extensions)]
 
-        hic_r2_list = glob.glob(f"samples/{sample}/input/hic/r2/*")
+        hic_r2_list = glob.glob(f"samples/{sample}/hic/r2/*")
         hic_r2_list = [f for f in hic_r2_list if f.endswith(valid_extensions)]
 
         hifi_count = len(hifi_path_list)
         r1_count = len(hic_r1_list)
         r2_count = len(hic_r2_list)
 
-        # Check for surplus Hi-C inputs
+        # check for surplus Hi-C inputs
         if r1_count > 1:
             raise ValueError(
                 f"Multiple R1 Hi-C inputs found for sample {sample}: {hic_r1_list}\n"
@@ -39,7 +39,7 @@ def get_sample_input_paths():
                 f"Please provide only a single input."
             )
 
-        # Check for missing inputs
+        # check for missing inputs
         missing = []
         if hifi_count == 0:
             missing.append("HiFi")
@@ -58,8 +58,6 @@ def get_sample_input_paths():
         sample_hic_r1_paths[sample] = hic_r1_list[0]
         sample_hic_r2_paths[sample] = hic_r2_list[0]
    
-    # print(sample_hifi_paths, sample_hic_r1_paths, sample_hic_r2_paths)
-
     return sample_hifi_paths, sample_hic_r1_paths, sample_hic_r2_paths
 
 
@@ -78,10 +76,10 @@ def get_hic_r2_path(wildcards):
 
 rule all:
     input:
-        [f"samples/{sample_name}/output/out_JBAT.hic" for sample_name in sample_names],
-        [f"samples/{sample_name}/output/out_JBAT.txt" for sample_name in sample_names],
-        [f"samples/{sample_name}/output/out_JBAT.assembly" for sample_name in sample_names],
-        [f"samples/{sample_name}/output/out_scaffolds_final.fa" for sample_name in sample_names]
+        [f"output/{sample_name}/{sample_name}_JBAT.hic" for sample_name in sample_names],
+        [f"output/{sample_name}/{sample_name}_JBAT.txt" for sample_name in sample_names],
+        [f"output/{sample_name}/{sample_name}_JBAT.assembly" for sample_name in sample_names],
+        [f"output/{sample_name}/{sample_name}_scaffolds_final.fa" for sample_name in sample_names]
         
 
 rule generate_samplesheet:
@@ -89,7 +87,7 @@ rule generate_samplesheet:
         hic_1=get_hic_r1_path,
         hic_2=get_hic_r2_path,
     output:
-        samplesheet="samples/{sample_name}/work/hic_samplesheet/samplesheet.csv",
+        samplesheet="work/{sample_name}/hic_samplesheet/samplesheet.csv",
     shell:
         "echo -e 'sample,fastq_1,fastq_2\\n{wildcards.sample_name},{input.hic_1},{input.hic_2}' > {output.samplesheet}"
 
@@ -97,20 +95,21 @@ rule generate_samplesheet:
 rule hifiasm:
   container:
     "oras://community.wave.seqera.io/library/hifiasm:0.25.0--bcfc60a944a26aaa"
-  threads: 32
+  threads: 24
   resources:
-    mem_mb=600_000
+    mem_mb=1_000_000
   input:
     hifi=get_hifi_path,
     hic_1=get_hic_r1_path,
     hic_2=get_hic_r2_path,
   output:
-    unitigs="samples/{sample_name}/work/hifiasm/out.hic.p_utg.gfa",
-    contigs="samples/{sample_name}/work/hifiasm/out.hic.p_ctg.gfa",
+    unitigs="work/{sample_name}/hifiasm/{sample_name}.hic.p_utg.gfa",
+    contigs="work/{sample_name}/hifiasm/{sample_name}.hic.p_ctg.gfa",
   log:
-    "samples/{sample_name}/logs/hifiasm.log"
+    "logs/{sample_name}/hifiasm.log"
   shell:
-    "hifiasm -t {threads} -o samples/{wildcards.sample_name}/work/hifiasm/out -l0 --h1 {input.hic_1} --h2 {input.hic_2} {input.hifi} 2> {log}"
+    # "module load snakemake && "
+    "hifiasm -t {threads} -o work/{wildcards.sample_name}/hifiasm/{wildcards.sample_name} -l0 --h1 {input.hic_1} --h2 {input.hic_2} {input.hifi} 2> {log}"
 
 
 rule gfa2fa:
@@ -120,11 +119,11 @@ rule gfa2fa:
   container:
     "oras://community.wave.seqera.io/library/gfatools_tabix:b5cb1ec01cf54783"
   input:
-    fa="samples/{sample_name}/work/hifiasm/out.hic.p_ctg.gfa"
+    fa="work/{sample_name}/hifiasm/{sample_name}.hic.p_ctg.gfa"
   output:
-    fa="samples/{sample_name}/work/hifiasm/out.hic.p_ctg.fa"
+    fa="work/{sample_name}/gfa2fa/{sample_name}.hic.p_ctg.fa"
   log:
-    "samples/{sample_name}/logs/gfa2fa.log"
+    "logs/{sample_name}/gfa2fa.log"
   shell:
     "gfatools gfa2fa {input.fa} > {output.fa} 2> {log}"
 
@@ -132,15 +131,15 @@ rule gfa2fa:
 rule hic_pro:
     handover: True
     input:
-        samplesheet="samples/{sample_name}/work/hic_samplesheet/samplesheet.csv",
-        fa="samples/{sample_name}/work/hifiasm/out.hic.p_ctg.fa",
+        samplesheet="work/{sample_name}/hic_samplesheet/samplesheet.csv",
+        fa="work/{sample_name}/gfa2fa/{sample_name}.hic.p_ctg.fa",
         config="hic_pro.config"
     output:
-        bam="samples/{sample_name}/work/hicpro/hicpro/mapping/{sample_name}_0_bwt2pairs.bam",
+        bam="work/{sample_name}/hicpro/hicpro/mapping/{sample_name}_0_bwt2pairs.bam",
     shell:
         "nextflow run nf-core/hic -r 2.1.0 "
-        "-work-dir samples/{wildcards.sample_name}/work/hicpro_work "
-        "--outdir samples/{wildcards.sample_name}/work/hicpro "
+        "-work-dir work/{wildcards.sample_name}/hicpro_work "
+        "--outdir work/{wildcards.sample_name}/hicpro "
         "-c {input.config} "
         "-profile singularity "
         "--input {input.samplesheet} "
@@ -165,13 +164,13 @@ rule samtools_faidx_source:
     resources:
         mem_mb=40_000
     input:
-        fa="samples/{sample_name}/work/hifiasm/out.hic.p_ctg.fa",
+        fa="work/{sample_name}/gfa2fa/{sample_name}.hic.p_ctg.fa",
     output:
-        fai="samples/{sample_name}/work/hifiasm/out.hic.p_ctg.fa.fai",
+        fai="work/{sample_name}/gfa2fa/{sample_name}.hic.p_ctg.fa.fai",
     log:
-        "samples/{sample_name}/logs/samtools_index.log"
+        "log/{sample_name}/samtools_index.log"
     shell:
-        "samtools faidx {input.fa} -o {output.fai} 2> {log}"
+        "samtools faidx --threads {threads} {input.fa} -o {output.fai} 2> {log}"
 
 
 rule yahs:
@@ -181,26 +180,26 @@ rule yahs:
     resources:
         mem_mb=400_000
     input:
-        bam="samples/{sample_name}/work/hicpro/hicpro/mapping/{sample_name}_0_bwt2pairs.bam",
-        fa="samples/{sample_name}/work/hifiasm/out.hic.p_ctg.fa",
-        fai="samples/{sample_name}/work/hifiasm/out.hic.p_ctg.fa.fai",
+        bam="work/{sample_name}/hicpro/hicpro/mapping/{sample_name}_0_bwt2pairs.bam",
+        fa="work/{sample_name}/gfa2fa/{sample_name}.hic.p_ctg.fa",
+        fai="work/{sample_name}/gfa2fa/{sample_name}.hic.p_ctg.fa.fai",
     output:
-        agp="samples/{sample_name}/work/yahs/out_scaffolds_final.agp",
-        fa="samples/{sample_name}/work/yahs/out_scaffolds_final.fa",
-        bin="samples/{sample_name}/work/yahs/out.bin",
+        agp="work/{sample_name}/yahs/{sample_name}_scaffolds_final.agp",
+        fa="work/{sample_name}/yahs/{sample_name}_scaffolds_final.fa",
+        bin="work/{sample_name}/yahs/{sample_name}.bin",
     log:
-        "samples/{sample_name}/logs/yahs.log"
+        "logs/{sample_name}/yahs.log"
     shell:
-        "yahs -o samples/{wildcards.sample_name}/work/yahs/out {input.fa} {input.bam} 2> {log}"
+        "yahs -o work/{wildcards.sample_name}/yahs/{wildcards.sample_name} {input.fa} {input.bam} 2> {log}"
 
 
 rule output_scaffolds:
     input:
-        fa="samples/{sample_name}/work/yahs/out_scaffolds_final.fa",
+        fa="work/{sample_name}/yahs/{sample_name}_scaffolds_final.fa",
     output:
-        fa="samples/{sample_name}/output/out_scaffolds_final.fa",
+        fa="output/{sample_name}/{sample_name}_scaffolds_final.fa",
     log:
-        "samples/{sample_name}/logs/output_scaffolds.log"
+        "logs/{sample_name}/output_scaffolds.log"
     shell:
         "mv {input.fa} {output.fa} 2> {log}"
 
@@ -212,24 +211,24 @@ rule juicer_generate_JBAT:
     resources:
         mem_mb=42_000
     input:
-        agp="samples/{sample_name}/work/yahs/out_scaffolds_final.agp",
-        bam="samples/{sample_name}/work/hicpro/hicpro/mapping/{sample_name}_0_bwt2pairs.bam",
-        fai="samples/{sample_name}/work/hifiasm/out.hic.p_ctg.fa.fai",
+        agp="work/{sample_name}/yahs/{sample_name}_scaffolds_final.agp",
+        bam="work/{sample_name}/hicpro/hicpro/mapping/{sample_name}_0_bwt2pairs.bam",
+        fai="work/{sample_name}/gfa2fa/{sample_name}.hic.p_ctg.fa.fai",
     output:
-        txt="samples/{sample_name}/output/out_JBAT.txt",
-        assembly="samples/{sample_name}/output/out_JBAT.assembly",
-        jbat_log="samples/{sample_name}/work/out_JBAT.log"
+        txt="output/{sample_name}/{sample_name}_JBAT.txt",
+        assembly="output/{sample_name}/{sample_name}_JBAT.assembly",
+        jbat_log="work/{sample_name}/JBAT/{sample_name}_JBAT.log"
     log:
-        "samples/{sample_name}/logs/juicer_generate_JBAT.log"
+        "logs/{sample_name}/juicer_generate_JBAT.log"
     shell:
-        "juicer pre -a -o samples/{wildcards.sample_name}/work/out_JBAT {input.bam} {input.agp} {input.fai} > {log} 2> {output.jbat_log}"
+        "juicer pre -a -o work/{wildcards.sample_name}/{wildcards.sample_name}_JBAT {input.bam} {input.agp} {input.fai} > {log} 2> {output.jbat_log}"
 
 
 rule download_juicer_tools:
     output:
         juicer_tools="downloads/juicer_tools.1.9.9_jcuda.0.8.jar",
     log:
-        "downloads/logs/get_juicer_tools.log"
+        "logs/downloads/get_juicer_tools.log"
     shell:
         "wget https://s3.amazonaws.com/hicfiles.tc4ga.com/public/juicer/juicer_tools.1.9.9_jcuda.0.8.jar -O {output.juicer_tools} 2> {log}"
 
@@ -242,11 +241,11 @@ rule juicer_tools_generate_hic:
         mem_mb=33_000
     input:
         juicer_tools="downloads/juicer_tools.1.9.9_jcuda.0.8.jar",
-        txt="samples/{sample_name}/output/out_JBAT.txt",
-        jbat_log="samples/{sample_name}/work/out_JBAT.log",
+        txt="output/{sample_name}/{sample_name}_JBAT.txt",
+        jbat_log="work/{sample_name}/JBAT/{sample_name}_JBAT.log",
     output:
-        hic="samples/{sample_name}/output/out_JBAT.hic"
+        hic="output/{sample_name}/{sample_name}_JBAT.hic"
     log:
-        "samples/{sample_name}/logs/juicer_tools_generate_hic.log"
+        "logs/{sample_name}/juicer_tools_generate_hic.log"
     shell:
         "(java -jar -Xmx{resources.mem_mb}m {input.juicer_tools} pre {input.txt} {output.hic} <(cat {input.jbat_log} | grep PRE_C_SIZE | awk '{{print $2\" \"$3}}')) 2> {log}"
