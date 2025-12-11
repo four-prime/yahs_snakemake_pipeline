@@ -58,7 +58,7 @@ def get_sample_input_paths():
         sample_hic_r1_paths[sample] = hic_r1_list[0]
         sample_hic_r2_paths[sample] = hic_r2_list[0]
    
-    print(sample_hifi_paths, sample_hic_r1_paths, sample_hic_r2_paths)
+    # print(sample_hifi_paths, sample_hic_r1_paths, sample_hic_r2_paths)
 
     return sample_hifi_paths, sample_hic_r1_paths, sample_hic_r2_paths
 
@@ -84,7 +84,6 @@ rule all:
         [f"samples/{sample_name}/output/out_scaffolds_final.fa" for sample_name in sample_names]
         
 
-
 rule generate_samplesheet:
     input:
         hic_1=get_hic_r1_path,
@@ -100,7 +99,7 @@ rule hifiasm:
     "oras://community.wave.seqera.io/library/hifiasm:0.25.0--bcfc60a944a26aaa"
   threads: 32
   resources:
-    mem_mb=1_200_000
+    mem_mb=600_000
   input:
     hifi=get_hifi_path,
     hic_1=get_hic_r1_path,
@@ -111,7 +110,7 @@ rule hifiasm:
   log:
     "samples/{sample_name}/logs/hifiasm.log"
   shell:
-    "hifiasm -t {threads} -o samples/{wildcards.sample_name}/work/hifiasm/out -l0 -f0 --h1 {input.hic_1} --h2 {input.hic_2} {input.hifi} 2> {log}"
+    "hifiasm -t {threads} -o samples/{wildcards.sample_name}/work/hifiasm/out -l0 --h1 {input.hic_1} --h2 {input.hic_2} {input.hifi} 2> {log}"
 
 
 rule gfa2fa:
@@ -211,7 +210,7 @@ rule juicer_generate_JBAT:
         "oras://community.wave.seqera.io/library/yahs:1.2a.2--bd14e0d1b929fa78"
     threads: 8
     resources:
-        mem_mb=32_000
+        mem_mb=42_000
     input:
         agp="samples/{sample_name}/work/yahs/out_scaffolds_final.agp",
         bam="samples/{sample_name}/work/hicpro/hicpro/mapping/{sample_name}_0_bwt2pairs.bam",
@@ -243,7 +242,7 @@ rule juicer_tools_generate_hic:
         mem_mb=33_000
     input:
         juicer_tools="downloads/juicer_tools.1.9.9_jcuda.0.8.jar",
-        txt="samples/{sample_name}/work/out_JBAT.txt",
+        txt="samples/{sample_name}/output/out_JBAT.txt",
         jbat_log="samples/{sample_name}/work/out_JBAT.log",
     output:
         hic="samples/{sample_name}/output/out_JBAT.hic"
