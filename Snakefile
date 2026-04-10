@@ -221,7 +221,7 @@ rule juicer_generate_JBAT:
     log:
         "logs/{sample_name}/juicer_generate_JBAT.log"
     shell:
-        "juicer pre -a -o work/{wildcards.sample_name}/{wildcards.sample_name}_JBAT {input.bam} {input.agp} {input.fai} > {log} 2> {output.jbat_log}"
+        "juicer pre -a -o output/{wildcards.sample_name}/{wildcards.sample_name}_JBAT {input.bam} {input.agp} {input.fai} > {log} 2> {output.jbat_log}"
 
 
 rule download_juicer_tools:
